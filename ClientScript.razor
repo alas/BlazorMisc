@@ -1,0 +1,88 @@
+@using System.Text;
+@using Microsoft.AspNetCore.Components.Rendering;
+@using Microsoft.AspNetCore.Components.RenderTree;
+@inject Microsoft.JSInterop.IJSRuntime JSRuntime;
+
+@if (type != "text/javascript")
+{
+    <script type="@type" suppress-error="BL9992">
+        @script
+    </script>
+}
+
+@code {
+
+    /*
+    Usage:
+    <ClientScript>
+        <script>
+        function MyFunction(id, a, b, c)
+        {
+            // do something
+        }
+        </script>
+    </ClientScript>
+
+        or:
+
+    <ClientScript src="uri" onload="handler"></ClientScript>
+    
+    based on: https://github.com/dotnet/aspnetcore/issues/16218
+
+    */
+
+
+    [Parameter]
+    public RenderFragment script { get; set; }
+
+    [Parameter]
+    public string onload { get; set; }
+
+    [Parameter]
+    public string src { get; set; }
+
+    [Parameter]
+    public string type { get; set; } = "text/javascript";
+
+    protected override bool ShouldRender() => false; // important!!
+
+#pragma warning disable BL0006 // Do not use RenderTree types
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        if (script != null && firstRender && type == "text/javascript")
+        {
+            var sb = new List<string>();
+            var rtb = new RenderTreeBuilder();
+            script.Invoke(rtb);
+
+            foreach (var frame in rtb.GetFrames().Array)
+            {
+                if (frame.FrameType == RenderTreeFrameType.Markup)
+                {
+                    sb.Add(frame.MarkupContent);
+                }
+            }
+
+            var output = string.Join("\r\n", sb).Trim();
+            if (!string.IsNullOrWhiteSpace(output))
+            {
+                await JSRuntime.InvokeVoidAsync("eval", output);
+            }
+        }
+        else if (src != null && firstRender && type == "text/javascript")
+        {
+            var sb = new List<string> { "var script = document.createElement('script');" };
+            if (!string.IsNullOrWhiteSpace(onload))
+                sb.Add($"script.onload = {onload};");
+            sb.Add($"script.src = '{src}';");
+            sb.Add("document.body.appendChild(script);");
+
+            var output = string.Join("\r\n", sb).Trim();
+            await JSRuntime.InvokeVoidAsync("eval", output);
+        }
+    }
+#pragma warning restore BL0006 // Do not use RenderTree types
+}
