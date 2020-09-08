@@ -1,15 +1,3 @@
-@using System.Text;
-@using Microsoft.AspNetCore.Components.Rendering;
-@using Microsoft.AspNetCore.Components.RenderTree;
-@inject Microsoft.JSInterop.IJSRuntime JSRuntime;
-
-@if (type != "text/javascript")
-{
-    <script type="@type" suppress-error="BL9992">
-        @script
-    </script>
-}
-
 <!-- Usage:
 <ClientScript>
     <script>
@@ -29,6 +17,17 @@ In your Shared folder, create a component named ClientScript.razor and place the
 based on: https://github.com/dotnet/aspnetcore/issues/16218
 -->
 
+@using System.Text;
+@using Microsoft.AspNetCore.Components.Rendering;
+@using Microsoft.AspNetCore.Components.RenderTree;
+@inject Microsoft.JSInterop.IJSRuntime JSRuntime;
+
+@if (type != "text/javascript")
+{
+    <script type="@type" suppress-error="BL9992">
+        @script
+    </script>
+}
 
 @code
 {
@@ -46,7 +45,7 @@ based on: https://github.com/dotnet/aspnetcore/issues/16218
 
     protected override bool ShouldRender() => false; // important!!
 
-#pragma warning disable BL0006 // Do not use RenderTree types
+    #pragma warning disable BL0006 // Do not use RenderTree types
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -84,5 +83,5 @@ based on: https://github.com/dotnet/aspnetcore/issues/16218
             }
         }
     }
-#pragma warning restore BL0006 // Do not use RenderTree types
+    #pragma warning restore BL0006 // Do not use RenderTree types
 }
