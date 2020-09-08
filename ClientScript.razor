@@ -11,26 +11,26 @@
 }
 
 @code {
-/*
-Usage:
-<ClientScript>
-    <script>
-    function MyFunction(id, a, b, c)
-    {
-        // do something
-    }
-    </script>
-</ClientScript>
+    /*
+    Usage:
+    <ClientScript>
+        <script>
+        function MyFunction(id, a, b, c)
+        {
+            // do something
+        }
+        </script>
+    </ClientScript>
 
-    or:
+        or:
 
-<ClientScript src="uri" onload="handler"></ClientScript>
+    <ClientScript src="uri" onload="handler"></ClientScript>
 
-In your Shared folder, create a component named ClientScript.razor and place the contents of this file
+    In your Shared folder, create a component named ClientScript.razor and place the contents of this file
 
-based on: https://github.com/dotnet/aspnetcore/issues/16218
+    based on: https://github.com/dotnet/aspnetcore/issues/16218
 
-*/
+    */
 
 
     [Parameter]
@@ -47,45 +47,49 @@ based on: https://github.com/dotnet/aspnetcore/issues/16218
 
     protected override bool ShouldRender() => false; // important!!
 
-    #pragma warning disable BL0006 // Do not use RenderTree types
+#pragma warning disable BL0006 // Do not use RenderTree types
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
 
-        if (script != null && firstRender && type == "text/javascript")
+        if (firstRender && type == "text/javascript")
         {
-            var sb = new StringBuilder();
-            var rtb = new RenderTreeBuilder();
-            script.Invoke(rtb);
-
-            foreach (var frame in rtb.GetFrames().Array)
+            string output = null;
+            if (script != null)
             {
-                if (frame.FrameType == RenderTreeFrameType.Markup)
+                var sb = new StringBuilder();
+                var rtb = new RenderTreeBuilder();
+                script.Invoke(rtb);
+
+                foreach (var frame in rtb.GetFrames().Array)
                 {
-                    sb.AppendLine(frame.MarkupContent);
+                    if (frame.FrameType == RenderTreeFrameType.Markup)
+                    {
+                        sb.AppendLine(frame.MarkupContent);
+                    }
                 }
+
+                output = sb.ToString().Trim();
+            }
+            else if (src != null)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("var script = document.createElement('script');");
+                if (!string.IsNullOrWhiteSpace(onload))
+                    sb.AppendLine($"script.onload = {onload};");
+                sb.AppendLine($"script.src = '{src}';");
+                sb.AppendLine("document.body.appendChild(script);");
+
+                output = sb.ToString().Trim();
             }
 
-            var output = sb.ToString().Trim();
             if (!string.IsNullOrWhiteSpace(output))
             {
                 await JSRuntime.InvokeVoidAsync("eval", output);
             }
         }
-        else if (src != null && firstRender && type == "text/javascript")
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("var script = document.createElement('script');");
-            if (!string.IsNullOrWhiteSpace(onload))
-                sb.AppendLine($"script.onload = {onload};");
-            sb.AppendLine($"script.src = '{src}';");
-            sb.AppendLine("document.body.appendChild(script);");
-
-            var output = sb.ToString().Trim();
-            await JSRuntime.InvokeVoidAsync("eval", output);
-        }
     }
 
-    #pragma warning restore BL0006 // Do not use RenderTree types
+#pragma warning restore BL0006 // Do not use RenderTree types
 }
